@@ -1,0 +1,114 @@
+html {
+    display: flex;
+    justify-content: center;
+    font-family: sans-serif;
+}
+
+body {
+    max-width: 1024px;
+}
+
+nav {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+nav a {
+    margin: 2px 5px;
+    text-decoration: none;
+}
+
+.article, .operation-manual, .license-notice {
+    line-height: 1.6em;
+    font-size: 1.3em;
+    letter-spacing: 0.01em;
+    font-family: serif;
+}
+
+.article li {
+    margin: 10px 0;;
+}
+
+code {
+    letter-spacing: unset;
+    background-color: rgb(79, 84, 50);
+    color: rgb(150, 218, 250);
+    padding: 10px 4px;
+    margin: 8px 8px;
+}
+
+.code-block {
+    font-size: small;
+    display: block;
+    font-family: 'Consolas', 'Courier New', Courier, monospace;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.code-inline {
+    display: inline;
+    font-family: 'Consolas', 'Courier New', Courier, monospace;
+}
+
+
+
+
+.app {
+    border: 2px solid gray;
+    padding: 10px 10px;
+    margin: 40px 0 10px 0;
+    line-height: 1.5em;
+}
+
+#msg-edid-check-sum-mismatch-warn,#msg-edid-override-exist-warn,#msg-reg-file-parse-failed {
+    background-color: yellow;
+    margin: 10px 0;
+    display: none;
+}
+
+
+#btn-open-reg-file {
+    width: 90%;
+}
+
+.hex-view {
+    font-family: 'Consolas', 'Courier New', Courier, monospace;
+}
+
+.hex-view-different {
+    color: red;
+    font-weight: bold;
+}
+
+.hex-view th {
+    background-color: cornflowerblue;
+}
+
+.app label {
+    user-select: none;
+    /* font-size: smaller;*/
+    font-style: italic;
+    color:darkblue;
+}
+
+table {
+    border-collapse:collapse;
+}
+
+td, th {
+    padding: 5px 5px;
+}
+
+.tip {
+    font-size: smaller;
+    color: darkslategray;
+    padding: 5px 5px;
+    margin: 10px 0px;
+    border: 1px dotted gray;
+    background-color: beige;
+}
+
+input {
+    margin: 5px 2px;
+}

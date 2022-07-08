@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>EDID Editor for Windows 11/10 tablet</title>
+        <link rel="stylesheet" type="text/css" href="./index.css">
+        <!-- version: 1.0.0; translation: 1.0.0 -->
+    </head>
+    <body>
+        <nav>
+            <a href="https://github.com/dot-osk/web-app-edid-editor">view on GitHub</a> |
+            <a href="./index.zhs.html">中文页面 (Original Language)</a>
+        </nav>
+
+        <div class="tip" style="font-size: larger;">The content is translated by machine (thanks DeepL/Bing), <a href="https://github.com/dot-osk/web-app-edid-editor">click here </a> to help with translation or fix translation errors.</div>
+
+        <main>
+            <div class="article">
+                <h2>
+                    1. Background
+                </h2>
+                <p>
+                    In Windows 11, Microsoft redesigned the virtual keyboard and changed the default behavior. According to the test, there is a definite condition that affects the behavior of the virtual keyboard:
+                    <br>
+                    <b>Whether the physical size of the screen is less than 18 inches, less than 18 inches can use docking mode, &gt;=18 inches screens can only use undocking mode;</b>
+                    <br><br>
+                    <img src="./img-docking-full-layout.jpg"><br>
+                    Docking + Full Layout Keyboard (&lt;18 Inches Screen)<br><br>
+
+                    <img src="./img-undocking-full-layout.jpg"><br>
+                    Undocking + Full Layout Keyboard (&gt;=18 Inches Screen)<br><br>
+
+                    <img src="./img-undocking-on-small-screen.jpg"><br>
+                    Undocking + Small Layout Keyboard (&lt;18 Inches screen, no more layout available)<br><br>
+
+                    <br><br>
+
+                    They have their own advantages and disadvantages:<br>
+                    <ul>
+                        <li>In undocking mode, most programs do not automatically adjust the position of the input area, so the touch keyboard may cover the input area, but you can freely drag the virtual keyboard to avoid the input area; while in docking mode, the input area of most programs can be automatically adjusted, avoiding the touch keyboard cover the input area.</li>
+                        <li>while in docking mode, popping up the touch keyboard will cause a change in the application window size and some applications will be interfered with. However, undocking mode will not change the window size or position of the applications.</li>
+                    </ul>
+                
+                    As you can see, there are advantages and disadvantages to both the docking and non-docking modes, but Microsoft does not give users the opportunity to choose:
+                    <ul>
+                        <li>Devices under 18 inches can only use the Small layout in undocking mode, which is terrible (Windows 11 22H2)!</li>
+                        <li>Docking mode is not available for devices over 18 inches!</li>
+                    </ul>
+                    
+                    Personally, I think Microsoft's design is extremely silly, especially when I'm using the Remote Desktop windows and Terminals on Surface Go, I wish I could use the undocking mode (to avoid window resizing) & full keyboard layout (more efficient input). However, Microsoft doesn't give us the choice. In comparison, Windows 10 doesn't have these silly limitations.
+                </p>
+
+                <br>
+                <b>So, in order to use split mode + full keyboard layout on Surface Go, We should try to let Windows 11 believe the screen diagonal of the Surface Go is above 18 inches!</b>
+                <br>
+
+                <hr>
+                <p>
+                    <h4>Tip: For Windows 10:</h4>
+                    Windows 10 also uses the physical screen size information provided in EDID to adjust the size of the touch keyboard, Windows 10 touch keyboard resizing feature can be achieved by adjusting the screen size information in EDID.
+                </p>
+                <hr>
+                <h2>
+                    2. Guessing where Windows gets the screen dimensions from
+                </h2>
+                <p>
+                    You can run this command in PowerShell to see the physical size of the screen, the returned value is in centimeters (cm):
+                    <code class="code-block">
+                        Get-WmiObject -Namespace root\wmi -Class WmiMonitorBasicDisplayParams | select InstanceName,MaxHorizontalImageSize,MaxVerticalImageSize
+                    </code>
+
+                    A possible source of this information is the EDID data read from the display, in the EDID 1.4 specification there is a special field for the physical size of the screen, the screen dimensions are usually stored in the Basic Display Info and PTM blocks of EDID Block 0, But Windows is likely to recognize the physical size of the screen only through the Basic Display Info block.
+                </p>
+
+                <hr>
+                <h2>
+                    3. How to modify EDID ?
+                </h2>
+                <p>
+                    You can find a variety of EDID editors on the Internet that support the EDID 1.4 specification, and editing these data is easy, But how do we get Windows to use our modified EDID data?? <br>
+                    <br>
+
+                    Luckily, you don't need any third-party programs or drivers to achieve this:
+                    Windows provides the EDID Override mechanism,
+                    <a target="_blank" href="https://docs.microsoft.com/en-us/windows-hardware/drivers/display/overriding-monitor-edids">Link: Microsoft docs - Manufacturer override of monitor EDIDs</a><br>
+                    
+                    So, We just need to write the modified EDID Block 0 information to "0" in the following path (0 means override EDID Base Block), value type is "REG_BINARY", length is 128 bytes.
+                    <code class="code-block">
+                        HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Enum\DISPLAY\%MONITOR_INSTANCE_PATH%\Device Parameters\EDID_OVERRIDE
+                    </code>
+                    <br>
+                    I attempted to change the screen size information at 0x15, 0x16 using the EDID editor, and override the default EDID with the EDID_Override registry key. After reboot, Eventually I can use the touch keyboard in undocking mode with full layout on the Surface Go!<br>
+                    I also tested on an external monitor (24 inches), and managed to make Windows think that the external monitor was only 17 inches, so that I could use the touch keyboard in docking mode.
+                </p>
+
+                <hr>
+                <h2>
+                    4. It's not a perfect solution
+                </h2>
+                <p>
+                    Since we modified the EDID information so Windows detects an unrealistic screen dimension, you will face some awkward scenarios:
+                    <ul>
+                        <li>Some applications that use the physical size of the screen to accurately display the size of an object ( although relatively rarely ) will get an incorrect screen size.</li>
+                        <li>The UI elements such as icons and text may be too large or too small in areas such as the login screen that are not affected by the user's Hi-DPI scaling settings.</li>
+                        <li>Only one mode can be used: for example, after resizing the screen to 18 inches, you will not be able to dock the virtual keyboard to the bottom of the screen unless you delete the EDID Override setting, but this requires a reboot of the device to take effect.</li>
+                    </ul>
+                    <br>
+                    Even so, I still prefer to use a non-docking traditional keyboard layout. Because for me, the Small layout, which is the only available layout in undocking mode by default, is an inefficient, poorly usable layout.<br>
+                    <b>The best solution perhaps is to hope that Microsoft will remove this silly restriction in the future release</b>, As a user, I know what I need, not what the UX designer thinks I need!
+                </p>
+            </div>
+
+            <br>
+            <br>
+            <br>
+
+            <hr>
+            <div class="license-notice">
+                If you don't want to install the EDID editing tool to modify the screen size, you can use the following online tool to generate a .reg file, which can be imported directly into the registry.  You need to restart your computer to use the modified EDID (External screens only need to reconnect, no reboot of the computer is required).
+                <br>
+                This program only supports modifying the screen size information field in EDID. Before importing the .reg file to your computer, please use Windows Notepad to open the registry file to check the contents and make sure there are no errors before importing it to your computer.
+                <br>
+                
+                <h2>Notice of Use</h2>
+                <p>
+                    You must be aware: the worst case of EDID OVERRIDE <b>can cause your device to not work or even damage your computer</b>, That's why we don't provide an "exe" file for you to easily modify this information with a single click. Before you use this program or even any EDID modification tool, You must have sufficient knowledge of the Registry Editor, Windows Device Manager, PowerShell and other essential system administrator knowledge, If you are not familiar with these tools, please seek help from a professional system administrator.
+                    <br><br>
+                    Note: Your computer OEM may overwrite the EDID OVERRIDE data, although this is rare, when it happens, you should be careful to check what changes the OEM has made to your monitor's EDID.
+                    <br><br>
+                    This application is not a professional EDID editor, although we try to avoid errors, you should be aware this program may still generate incorrect EDID data, and you are entirely responsible for any damage caused by using this program.
+                </p>
+            </div>
+
+            <hr>
+            <div class="operation-manual">
+                <h2>
+                    How to use this application
+                </h2>
+
+                <div class="operation-step">
+                    <h3>
+                        1. Export original EDID data to registry file.
+                    </h3>
+
+                    First, disconnect all external monitors, then open PowerShell and run this:
+
+                    <code class="code-block">
+                        Get-PnpDevice -Class "Monitor" -Status "OK" | ForEach-Object { $regfile=$([Environment]::GetFolderPath('Desktop') + "\" + $($_.Name) + '.reg'); Write-Host -NoNewline "Exporting $($regfile) : "; reg.exe export "$('HKLM\SYSTEM\CurrentControlSet\Enum\' + $($_.InstanceId) + '\Device Parameters')"  "$regfile" /y}
+                    </code>
+
+                    You will see output like this:
+
+                    <code class="code-block">
+                        Exporting C:\Users\%USER_NAME%\Desktop\Integrated Monitor.reg : The operation completed successfully.
+                    </code>
+                                        
+                    Find this registry file, and use it in subsequent steps.
+                </div>
+
+                <div class="operation-step">
+                    <h3>
+                        2. Check the current screen dimension information, and keep a record of it, so that you can check whether the changes are made successfully afterwards.
+                    </h3>
+                </div>
+
+                <div class="operation-step">
+                    <h3>
+                        3. Import the registry file in the editor.
+                    </h3>
+                    In the editor below, click Open Registry File, and select the exported registry file. <br>
+                    The editor will automatically extract information about the physical dimension of this screen, the best resolution, the image size at the best resolution, etc. <br>
+                    You need to make sure this information is correct, especially the screen resolution, otherwise it will affect the calculated screen size, if this information is not correct, please switch to another EDID modification tool or submit an issue to us.
+                </div>
+
+                <div class="operation-step">
+                    <h3>
+                        4. Set new screen size information
+                    </h3>
+                    Enter your desired screen size, when diagonal length is &gt;= 18 inches Windows 11 will force the touch keyboard undock, when length is &lt;18 inches you can use dock mode.
+                </div>
+
+                <div class="operation-step">
+                    <h3>
+                        5. Download EDID Override registry file
+                    </h3>
+                    The application will automatically calculate the new EDID data when you change the screen size parameters, and you can see which fields of the EDID we have changed in the hex viewer below.<br>
+                    After setting the desired screen size, click the Download EDID Override Registry File button and the Remove EDID Override Registry File button to download the two .reg files.<br>
+                    <ul>
+                        <li>XXXX_EDID_OVERRIDE.reg is used to import the EDID data you set;</li>
+                        <li>XXXX_EDID_OVERRIDE_REMOVAL.reg file is used to remove the EDID Override setting.</li>
+                    </ul>
+
+                    After checking the contents of the registry file, double click XXXX_EDID_OVERRIDE.reg to import the modified EDID data.
+                <div>
+
+                <div class="operation-step">
+                    <h3>6. Restart computer to apply settings</h3>
+                    After importing the registry file, you need to restart your computer, after restarting, you may notice that the size of the Windows UI elements may have changed. This is fine, Windows seems to determine the level of Hi-DPI scaling based on screen size and resolution.
+                    <br>
+                    Try to invoke the touch keyboard and check if it successfully changes its behavior.
+                    <br>
+                    <br>
+                    Finally: typically you may need to readjust the scaling level in your Windows display settings, in this case, the recommended scaling level may no longer be helpful and you will need to set it to the level you feel suitable.
+                    <br>
+                    For example: Surface GO 2, the recommended scaling level before adjustment is 150%, after adjusting the screen size to 18 inches in EDID, the recommended scaling level is 125%, resulting in too small text size, which needs to be adjusted to 150% again.
+
+                </div>
+
+                <hr>
+                <div class="operation-step">
+                    If you wish to undo the EDID override, import the XXXX_EDID_OVERRIDE_REMOVAL.reg file and then restart your computer.
+                </div>
+            </div>
+            <hr>
+        </main>
+        
+        <div class="app">
+            <h1>Simple EDID Editor</h1>
+            <hr>
+
+            <label for="btn-open-reg-file">Open Windows registry file:</label><br>
+            <input type="file" id="btn-open-reg-file" accept=".reg">
+
+            <div id="msg-edid-check-sum-mismatch-warn">
+                ! Warning: Your computer's EDID data contains an invalid checksum, either because the EDID data that came with your product is corrupt or because the program does not support your EDID specification at this time.<br>
+                It is recommended to use another EDID editor to change your EDID data.
+            </div>
+            <div id="msg-edid-override-exist-warn">
+                ! Warning: This monitor already has EDID Override data, either set by your OEM or because you had set EDID Override manually.<br>
+                In this situation, the EDID information we obtained may be inaccurate. If necessary, please manually remove the existing EDID Override data and restart your computer, then re-export the registry file.
+            </div>
+            <div id="msg-reg-file-parse-failed">
+                Encountered an error while parsing the .reg file!
+            </div>
+
+            <hr>
+            <h2>Original EDID information of the display: </h2>
+            Device Instance Path: <span id="info-device-instance-path"></span><br>
+            Screen physical dimension (Windows will use this info.): <span id="info-orig-screen-physical-size"></span> centimeter
+            <br>
+            PTM screen dimension: <span id="info-orig-ptm-video-size"></span> centimeter
+            <br>
+            <br>
+
+            Preferred Timing Mode resolution (If detected incorrectly, please change the resolution to the correct one or use another EDID editing tool):<br>
+            <label for="input-screen-h-pixel">PTM horizontal pixel</label>
+            <input type="number" id="input-screen-h-pixel" value="0">
+            <br>
+            <label for="input-screen-v-pixel">PTM vertical pixel</label>
+            <input type="number" id="input-screen-v-pixel" value="0">
+            <div class="tip">
+                Note: We will not change the PTM resolution in EDID, the resolution filled in here is only used to maintain the aspect ratio of the screen in the subsequent calculation steps.
+            </div>
+            <br>
+            
+            <hr>
+            <h2>Set the new screen dimension parameters: </h2>
+            <label for="input-screen-diagonal-size">Screen physical dimension (unit: Inch)</label>
+            <input type="number" id="input-screen-diagonal-size">
+            <br>
+            <input type="checkbox" id="checkbox-should-change-ptm-dimension" unchecked>
+            <label for="checkbox-should-change-ptm-dimension">Modify the screen size information in PTM too.</label>
+            <br>
+            <div class="tip">
+                Windows 11 will force the touch keyboard to undock at &gt;=18 inches, and dock mode is available for devices smaller than 18 inches. The details are unclear, but the observed behavior seems to be a direct truncation of the decimal part, without rounding.
+            </div>
+            New screen dimension in EDID: <span id="info-new-screen-physical-size"></span> centimeter,  Approx. <span id="info-new-screen-physical-size-inch"></span> Inch
+            <br>
+
+            <hr>
+            <div class="hex-view">
+                <h2 style="display: inline;">Hex view</h2>
+                <button id="btn-copy-hex-view-content-string">copy to clipboard</button>
+                <table>
+                    <thead>
+                        <th></th>
+                        <th>00</th> <th>01</th> <th>02</th> <th>03</th>
+                        <th>04</th> <th>05</th> <th>06</th> <th>07</th>
+                        <th>08</th> <th>09</th> <th>0A</th> <th>0B</th>
+                        <th>0C</th> <th>0D</th> <th>0E</th> <th>0F</th>
+                    </thead>
+                    <tbody id="hex-view-tbody">
+                        <tr><th>00</th></tr>
+                        <tr><th>10</th></tr>
+                        <tr><th>20</th></tr>
+                        <tr><th>30</th></tr>
+                        <tr><th>40</th></tr>
+                        <tr><th>50</th></tr>
+                        <tr><th>60</th></tr>
+                        <tr><th>70</th></tr>
+                    </tbody>
+                </table>
+            </div>
+            <hr>
+            <button disabled id="btn-download-edid-override-reg-file">Download EDID Override registry file</button>
+            <button disabled id="btn-download-edid-override-removal-reg-file">Download EDID Override removal registry file</button>
+        </div>
+        <footer>
+            copyright: migueltek.com, all rights reserved.
+        </footer>
+        <script src="./edid-editor.js"></script>
+    </body>
+</html>
